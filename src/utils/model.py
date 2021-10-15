@@ -39,7 +39,14 @@ def save_plot(history, plot_name, plot_dir):
     plt.grid()
     plt.savefig(path_to_plot)
 
-def get_log_path(Log_dir="logs/fit"):
+def get_tb_log_path(Log_dir="logs/tensorboard_logs"):
+    unique_name = time.strftime("log_%Y_%m_%d_%H_%M_%S")
+    log_path = os.path.join(Log_dir, unique_name)
+    print(f"saving logs at: {log_path}")
+
+    return log_path
+
+def get_log_path(Log_dir="logs/logs_dir"):
     unique_name = time.strftime("log_%Y_%m_%d_%H_%M_%S")
     log_path = os.path.join(Log_dir, unique_name)
     print(f"saving logs at: {log_path}")
