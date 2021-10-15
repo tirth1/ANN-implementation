@@ -1,8 +1,9 @@
 import os.path
 from utils.common import read_config
 from utils.data_mgmt import get_data
-from utils.model import create_model, save_model, save_plot
+from utils.model import create_model, save_model, save_plot, get_log_path
 import argparse
+import tensorflow as tf
 
 def training(config_path):
     config = read_config(config_path)
@@ -12,11 +13,19 @@ def training(config_path):
     OPTIMIZER = config["params"]["optimizer"]
     METRICS = config["params"]["metrics"]
     NUM_CLASSES = config["params"]["num_classes"]
+    LOG_DIR = get_log_path()
     model = create_model(LOSS_FUNCTION, OPTIMIZER, METRICS, NUM_CLASSES)
+
+    # callback functions
+    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir = LOG_DIR)
+    early_stopping_cb = tf.keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
+    CKPT_path = 'model_ckpt.h5'
+    checkpointing_cb = tf.keras.callbacks.ModelCheckpoint(CKPT_path, save_best_only=True)
+
     EPOCHS = config["params"]["epochs"]
     VALIDATION = (X_valid, y_valid)
-
-    history = model.fit(X_train, y_train, epochs=EPOCHS, validation_data=VALIDATION)
+    CALLBACKS = [tensorboard_cb, early_stopping_cb, checkpointing_cb]
+    history = model.fit(X_train, y_train, epochs=EPOCHS, validation_data=VALIDATION, callbacks=CALLBACKS)
 
     artifacts_dir = config["artifacts"]["artifacts_dir"]
     model_name = config["artifacts"]["model_name"]
