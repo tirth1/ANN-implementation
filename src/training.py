@@ -1,7 +1,9 @@
 import os.path
 from utils.common import read_config
 from utils.data_mgmt import get_data
-from utils.model import create_model, save_model, save_plot, get_tb_log_path, get_log_path
+from utils.model import create_model, save_model, save_plot
+from utils.logging import get_log_path
+from utils.callbacks import get_callbacks
 import argparse
 import tensorflow as tf
 import logging
@@ -10,19 +12,10 @@ import logging
 
 def training(config_path):
     config = read_config(config_path)
-    log_dir = config["logs"]["logs_dir"]
-    general_logs = config["logs"]["general_logs"]
-    general_logs_path = os.path.join(log_dir, general_logs)
-    os.makedirs(general_logs_path, exist_ok=True)
 
     logging_str = "[%(asctime)s: %(levelname)s: %(module)s] %(message)s"
-    GENERAL_LOG_PATH = get_log_path(general_logs_path)
+    GENERAL_LOG_PATH = get_log_path(config)
     logging.basicConfig(filename=GENERAL_LOG_PATH, level=logging.INFO, format=logging_str, filemode="a")
-
-    tensorboard_logs = config["logs"]["tensorboard_logs"]
-    tensorboard_logs_path = os.path.join(log_dir, tensorboard_logs)
-    os.makedirs(tensorboard_logs_path, exist_ok=True)
-    TB_LOG_DIR = get_tb_log_path(tensorboard_logs_path)
 
     validation_datasize = config["params"]["validation_datasize"]
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = get_data(validation_datasize)
@@ -33,15 +26,9 @@ def training(config_path):
 
     model = create_model(LOSS_FUNCTION, OPTIMIZER, METRICS, NUM_CLASSES)
 
-    # callback functions
-    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir = TB_LOG_DIR)
-    early_stopping_cb = tf.keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
-    CKPT_path = 'model_ckpt.h5'
-    checkpointing_cb = tf.keras.callbacks.ModelCheckpoint(CKPT_path, save_best_only=True)
-
     EPOCHS = config["params"]["epochs"]
     VALIDATION = (X_valid, y_valid)
-    CALLBACKS = [tensorboard_cb, early_stopping_cb, checkpointing_cb]
+    CALLBACKS = get_callbacks(config, X_train)
     try:
         logging.info(">>> Training Started >>>")
         history = model.fit(X_train, y_train, epochs=EPOCHS, validation_data=VALIDATION, callbacks=CALLBACKS)
